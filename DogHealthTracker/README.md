@@ -15,7 +15,7 @@
 
 | Home | Profile |Processing | Analysis Result | Health Score | History | Settings |
 |------|---------|-----------|-----------------|--------------|---------|----------|
-| ![Home](screenshots/Home.png) | ![Profile](screenshots/Profile.png) | ![Processing](screenshots/Processing.png) | ![Result](screenshots/Result.png) | ![Scrolled Result](screenshots/Result2.png) | ![History](screenshots/History.png) | ![Setting](screenshots/Settings.png) |
+| ![Home](screenshots/Home.png) | ![Profile](screenshots/Profile.png) | ![Processing](screenshots/Processing.png) | ![Result](screenshots/Result1.png) | ![Scrolled Result](screenshots/Result2.png) | ![History](screenshots/History.png) | ![Setting](screenshots/Settings.png) |
 ---
 
 ## ✨ Features

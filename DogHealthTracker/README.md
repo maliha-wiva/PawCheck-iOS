@@ -1,18 +1,102 @@
-# 🐾 Dog Health Tracker — iOS App
+# 🐾 PawCheck — Dog Health Tracker
 
-> AI-powered dog digestive health analysis via poop image recognition. Built with SwiftUI, Clean Architecture, and OpenAI Vision API.
+![Swift](https://img.shields.io/badge/Swift-5.9-orange?logo=swift)
+![SwiftUI](https://img.shields.io/badge/SwiftUI-5.0-blue?logo=apple)
+![iOS](https://img.shields.io/badge/iOS-17%2B-lightgrey?logo=apple)
+![Architecture](https://img.shields.io/badge/Architecture-Clean%20Architecture-green)
+![AI](https://img.shields.io/badge/AI-OpenAI%20GPT--4o%20Vision-purple?logo=openai)
+![License](https://img.shields.io/badge/License-MIT-yellow)
+
+> An AI-powered iOS app that analyzes your dog's poop photos to provide actionable digestive health insights — built to demonstrate production-grade iOS architecture with real-world AI integration.
 
 ---
 
-## 📐 Architecture Overview
+## 📸 Screenshots
 
-This project follows **Clean Architecture** with a strict **unidirectional dependency rule**:
+| Home | Analysis Result | Health Score | History |
+|------|----------------|--------------|---------|
+| ![Home](screenshots/Home.png) | ![Profile](screenshots/Profile.png) | ![Processing](screenshots/Processing.png) |![Result](screenshots/Result.png) |![Scrolled Result](screenshots/Result2.png) | ![Setting](screenshots/Settings.png) | ![History](screenshots/History.png) |
+---
+
+## ✨ Features
+
+- 📷 **Camera & Photo Library** — Capture or select poop images for analysis
+- 🤖 **AI Health Analysis** — GPT-4o Vision detects poop presence and evaluates health indicators
+- 🎯 **Health Score** — 0–100 composite score with tier rating (Excellent → Critical)
+- 🔬 **Detailed Indicators** — Color, consistency, shape, size, blood, mucus, parasite detection
+- 💡 **Smart Recommendations** — Prioritized, actionable health advice with vet referral alerts
+- 🐕 **Dog Profile** — Personalizes AI analysis with breed, age, diet, and medical history
+- 📋 **Analysis History** — Paginated history with filtering and swipe-to-delete
+- ⚙️ **Settings** — API key management, measurement system, notification preferences
+
+---
+
+## 🏛 Architecture
+
+This project follows **Clean Architecture** with strict unidirectional dependency flow:
 
 ```
-Presentation Layer  →  Domain Layer  ←  Data Layer
+┌─────────────────────────────────────────────────────┐
+│                 Presentation Layer                   │
+│         SwiftUI Views  +  ViewModels (MVVM)         │
+└────────────────────┬────────────────────────────────┘
+                     │ depends on (protocols only)
+┌────────────────────▼────────────────────────────────┐
+│                   Domain Layer                       │
+│     Entities  │  Use Cases  │  Repository Protocols │
+│         ⭐️ Pure Swift — zero framework imports ⭐️   │
+└────────────────────▲────────────────────────────────┘
+                     │ implements
+┌────────────────────┴────────────────────────────────┐
+│                    Data Layer                        │
+│   OpenAI API  │  Local Storage  │  DTOs  │ Mappers  │
+└─────────────────────────────────────────────────────┘
 ```
 
-No layer can depend on one above it. The **domain layer** is the pure business core — it has zero framework imports.
+### Pattern Stack
+
+| Pattern | Implementation |
+|--------|---------------|
+| **Clean Architecture** | Strict 3-layer separation, domain has zero UIKit/SwiftUI imports |
+| **MVVM** | `@MainActor` ViewModels with `@Published` state, Views are purely declarative |
+| **Repository Pattern** | All data access abstracted behind protocols |
+| **Use Cases** | Each business operation is an isolated, single-responsibility class |
+| **Dependency Injection** | Constructor injection throughout, `AppDIContainer` as composition root |
+| **Reactive State** | Combine `@Published` + shared `DogProfileStore` for cross-screen reactivity |
+
+---
+
+## ✅ SOLID Principles
+
+| Principle | Where Applied |
+|-----------|--------------|
+| **S** — Single Responsibility | `AnalysisPromptBuilder` only builds prompts. `OpenAIAnalysisMapper` only maps data. `NetworkClient` only handles HTTP. |
+| **O** — Open/Closed | New AI provider? Implement `OpenAIDataSourceProtocol`. New storage backend? Implement `LocalStorageServiceProtocol`. Zero existing code modified. |
+| **L** — Liskov Substitution | Any `PoopAnalysisRepositoryProtocol` implementation (real, mock, offline) is a drop-in replacement |
+| **I** — Interface Segregation | `PoopAnalysisRepositoryProtocol`, `DogProfileRepositoryProtocol`, `SettingsRepositoryProtocol` — each screen only depends on what it needs |
+| **D** — Dependency Inversion | `HomeViewModel` depends on `AnalyzePoopUseCaseProtocol`, never on `AnalyzePoopUseCase` directly |
+
+---
+
+## 🤖 AI Integration
+
+### Analysis Flow
+```
+UIImage
+  └─► Compress to JPEG (max 1MB, auto quality reduction)
+        └─► Base64 encode
+              └─► OpenAI GPT-4o Vision API
+                    └─► Structured JSON response (enforced via system prompt)
+                          └─► OpenAIAnalysisDTO
+                                └─► OpenAIAnalysisMapper
+                                      └─► PoopAnalysisResult (Domain Entity)
+                                            └─► Persisted locally + displayed in UI
+```
+
+### Prompt Engineering
+- System prompt enforces a **strict JSON schema** — makes AI output deterministic and reliably parseable
+- Dog profile context (breed, age, diet, medical history) is **injected into every prompt** for personalized analysis
+- All prompt logic isolated in `AnalysisPromptBuilder` — easy to A/B test or swap prompts without touching network code
 
 ---
 
@@ -21,165 +105,102 @@ No layer can depend on one above it. The **domain layer** is the pure business c
 ```
 DogHealthTracker/
 ├── App/
-│   ├── DogHealthTrackerApp.swift       # @main entry point
-│   └── AppCoordinator.swift            # Root navigation (TabView)
+│   ├── DogHealthTrackerApp.swift        # @main entry point
+│   └── AppCoordinator.swift             # Tab-based root navigation
 │
 ├── Core/
-│   ├── DI/
-│   │   └── AppDIContainer.swift        # Composition root — all dependencies wired here
-│   ├── Network/
-│   │   └── NetworkClient.swift         # Protocol-driven HTTP client
-│   ├── Utils/
-│   │   └── BaseViewModel.swift         # Shared ViewModel state + perform() helper
-│   └── Extensions/
-│       └── UIImage+Extensions.swift    # Image compression utilities
+│   ├── DI/AppDIContainer.swift          # ⭐ Composition root — entire dependency graph
+│   ├── Network/NetworkClient.swift      # Protocol-driven URLSession wrapper
+│   └── Utils/
+│       ├── BaseViewModel.swift          # Shared loading/error state management
+│       └── AppLogger.swift              # OSLog-based structured logging
 │
-├── Domain/                             # ⭐️ Pure Swift — NO framework imports
-│   ├── Entities/
-│   │   └── DomainEntities.swift        # All core business models
-│   ├── Repositories/
-│   │   └── RepositoryProtocols.swift   # Repository contracts (interfaces)
-│   └── UseCases/
-│       └── UseCases.swift              # Business logic orchestration
+├── Domain/                              # ⭐ Pure Swift — NO UIKit/SwiftUI
+│   ├── Entities/DomainEntities.swift    # Core business models
+│   ├── Repositories/                    # Repository contracts (protocols)
+│   └── UseCases/UseCases.swift          # Business logic — one class per operation
 │
-├── Data/                               # Implements Domain protocols
+├── Data/
 │   ├── DataSources/
-│   │   ├── Remote/
-│   │   │   └── OpenAIDataSource.swift  # OpenAI Vision API integration
-│   │   └── Local/
-│   │       └── LocalDataSources.swift  # File-based JSON persistence
-│   ├── DTOs/
-│   │   └── OpenAIDTOs.swift            # API request/response models
-│   ├── Mappers/
-│   │   └── AnalysisMapper.swift        # DTO → Domain entity conversions
-│   └── Repositories/
-│       └── ConcreteRepositories.swift  # Repository implementations
+│   │   ├── Remote/OpenAIDataSource.swift  # GPT-4o Vision integration
+│   │   └── Local/LocalDataSources.swift   # JSON file persistence
+│   ├── DTOs/OpenAIDTOs.swift             # API request/response models
+│   ├── Mappers/AnalysisMapper.swift      # DTO → Domain Entity conversion
+│   └── Repositories/                    # Concrete repository implementations
 │
-├── Features/                           # Feature-sliced UI modules
-│   ├── Home/
-│   │   ├── Views/HomeView.swift
-│   │   └── ViewModels/HomeViewModel.swift
-│   ├── Analysis/
-│   │   ├── Views/AnalysisResultView.swift
-│   │   └── ViewModels/AnalysisResultViewModel.swift
-│   ├── History/
-│   │   ├── Views/OtherViews.swift
-│   │   └── ViewModels/OtherViewModels.swift
-│   ├── DogProfile/
-│   └── Settings/
+├── Features/                            # Feature-sliced modules
+│   ├── Home/                            # Main screen + analyze flow
+│   ├── Analysis/                        # AI result display
+│   ├── History/                         # Past analyses list
+│   ├── DogProfile/                      # Dog info management
+│   └── Settings/                        # API key + app preferences
 │
 ├── DesignSystem/
-│   ├── Theme/AppTheme.swift            # Color, Typography, Spacing tokens
-│   └── Components/UIComponents.swift   # Reusable UI building blocks
+│   ├── Theme/AppTheme.swift             # Colors, typography, spacing tokens
+│   └── Components/UIComponents.swift    # Reusable UI components
 │
 └── Services/
-    └── Camera/CameraView.swift         # UIImagePickerController wrapper
+    └── Camera/CameraView.swift          # UIImagePickerController wrapper
 ```
 
 ---
 
-## 🏛 Architecture Patterns
+## 🔧 Setup & Run
 
-### Clean Architecture (3 Layers)
+### Prerequisites
+- Xcode 15+
+- iOS 17+ simulator or device
+- OpenAI API key with **GPT-4o** access → [Get one here](https://platform.openai.com)
 
-| Layer        | Responsibility                                    | Dependencies         |
-|--------------|---------------------------------------------------|----------------------|
-| Domain       | Business rules, entities, use case contracts      | None (pure Swift)    |
-| Data         | Network calls, local persistence, mappers         | Domain protocols     |
-| Presentation | UI, ViewModels, navigation                        | Domain use cases     |
+### Steps
 
-### MVVM + Use Cases
+```# 1. Clone the repo
+git clone https://github.com/maliha-wiva/PawCheck-iOS.git
 
-```
-View  →  ViewModel  →  UseCase  →  Repository (protocol)
-                                         ↓
-                                   DataSource (remote/local)
+# 2. Open in Xcode
+open PawCheck-iOS/DogHealthTracker/DogHealthTracker.xcodeproj
 ```
 
-### Dependency Injection (Constructor Injection)
+3. In Xcode → Select your target → **Signing & Capabilities** → set your Team
+4. Add to Target Info tab:
+   - `Privacy - Camera Usage Description`
+   - `Privacy - Photo Library Usage Description`
+5. **Run** on simulator or device (`Cmd+R`)
+6. Go to **Settings tab** in the app → paste your OpenAI API key
 
-All dependencies are injected via constructors — never resolved via singletons inside classes.  
-The `AppDIContainer` (composition root) assembles the entire dependency graph at startup.
+---
+
+## 🚀 Roadmap
+
+The architecture is designed so every item below can be added without modifying existing code:
+
+- [ ] **Multi-dog support** — `fetchAllDogProfiles()` already implemented in repository
+- [ ] **Trend analytics** — Add `HealthTrendUseCase` over existing history data
+- [ ] **PDF/CSV export** — `ExportFormat` enum already defined in settings
+- [ ] **Push notifications** — `notificationsEnabled` + `reminderIntervalHours` pre-wired
+- [ ] **CloudKit sync** — Swap `CoreDataStorageService` for `CloudKitStorageService`
+- [ ] **HealthKit integration** — New data source conforming to existing protocols
+- [ ] **SwiftData migration** — Replace JSON persistence with `@Model` entities
+- [ ] **Backend + secure API proxy** — For App Store distribution
+
+---
+
+## 🧪 Testability
+
+Every layer is independently unit-testable via protocol mocking:
 
 ```swift
-// ✅ Correct — dependencies injected
-final class PoopAnalysisRepository {
-    init(remoteDataSource: OpenAIDataSourceProtocol,
-         localDataSource: AnalysisLocalDataSourceProtocol, ...) { }
+final class MockPoopAnalysisRepository: PoopAnalysisRepositoryProtocol {
+    var stubbedResult: PoopAnalysisResult?
+    func analyzeImage(_ image: UIImage, dogProfile: DogProfile?) async throws -> PoopAnalysisResult {
+        return stubbedResult ?? { throw DomainError.analysisNotFound }()
+    }
 }
 
-// ❌ Wrong — static dependency
-let repo = PoopAnalysisRepository(remote: OpenAIDataSource())  // hardcoded
-```
-
----
-
-## ✅ SOLID Principles Applied
-
-| Principle | Application |
-|-----------|-------------|
-| **S** — Single Responsibility | Each class has one job: `AnalysisMapper` only maps, `PromptBuilder` only builds prompts |
-| **O** — Open/Closed | Add new data sources by creating a new `OpenAIDataSourceProtocol` conformance, never modifying existing code |
-| **L** — Liskov Substitution | All protocol implementations are interchangeable (e.g., mock vs real data source) |
-| **I** — Interface Segregation | Repositories split into focused protocols (`PoopAnalysisRepositoryProtocol`, `DogProfileRepositoryProtocol`) |
-| **D** — Dependency Inversion | ViewModels depend on `UseCaseProtocol`, not concrete use cases |
-
----
-
-## 🤖 AI Integration (OpenAI Vision)
-
-### Flow
-```
-UIImage  →  base64 JPEG  →  OpenAI GPT-4o Vision  →  JSON Response  →  Domain Entity
-```
-
-### Key Design Decisions
-
-1. **Structured JSON output** — System prompt enforces a strict schema, making parsing deterministic
-2. **Prompt engineering in `AnalysisPromptBuilder`** — Separated from networking code; easy to A/B test prompts
-3. **Dog context injection** — Dog profile data enriches prompts for more accurate, personalized analysis
-4. **Image compression pipeline** — Auto-quality reduction to stay under API limits while preserving analysis quality
-
----
-
-## 📱 Features
-
-### Current (v1.0)
-- [x] Poop image capture via camera or photo library
-- [x] AI-powered health analysis (detection, color, consistency, shape, size)
-- [x] Overall health score (0–100) with tier rating
-- [x] Blood, mucus, parasite, undigested food detection
-- [x] Prioritized health recommendations with action steps
-- [x] Analysis history with filtering and pagination
-- [x] Dog profile for contextual AI analysis
-- [x] Settings with API key management
-
-### Roadmap (Easily Extensible)
-- [ ] **Multi-dog support** — `DogProfileRepository.fetchAllDogProfiles()` is already implemented
-- [ ] **Trend analytics** — Add `HealthTrendUseCase` consuming existing history data
-- [ ] **Export (PDF/CSV)** — `ExportFormat` enum and setting already defined
-- [ ] **Notifications** — `notificationsEnabled` setting and `reminderIntervalHours` ready
-- [ ] **CloudKit sync** — Swap `CoreDataStorageService` for `CloudKitStorageService`
-- [ ] **HealthKit integration** — Plug in as a new data source
-- [ ] **Offline queue** — Add a pending-analysis queue in `PoopAnalysisRepository`
-- [ ] **SwiftData migration** — Replace JSON storage with `@Model` entities
-
----
-
-## 🧪 Testing Strategy
-
-The protocol-driven architecture makes every layer independently testable:
-
-```swift
-// Unit test example — zero network calls needed
 func testAnalyzePoopUseCase_withSmallImage_throwsImageTooSmall() async throws {
-    let mockRepo = MockPoopAnalysisRepository()
-    let sut = AnalyzePoopUseCase(repository: mockRepo)
+    let sut = AnalyzePoopUseCase(repository: MockPoopAnalysisRepository())
     let tinyImage = UIImage(systemName: "photo")!
-    
-    await XCTAssertThrowsError(
-        try await sut.execute(image: tinyImage, dogProfile: nil)
-    ) { error in
+    await XCTAssertThrowsError(try await sut.execute(image: tinyImage, dogProfile: nil)) { error in
         XCTAssertEqual(error as? DomainError, .imageTooSmall)
     }
 }
@@ -187,34 +208,12 @@ func testAnalyzePoopUseCase_withSmallImage_throwsImageTooSmall() async throws {
 
 ---
 
-## 🔧 Setup
+## 👨‍💻 Author
 
-1. Clone the repository
-2. Open `DogHealthTracker.xcodeproj` in Xcode 15+
-3. Set your iOS development team in project settings
-4. Build and run on a device or simulator
-5. Add your OpenAI API key in **Settings** tab (requires a key with GPT-4o access)
+Built to demonstrate **production-grade iOS architecture** with real-world AI integration.
 
-### Required Permissions (Info.plist)
-```xml
-<key>NSCameraUsageDescription</key>
-<string>Used to capture photos for health analysis</string>
-<key>NSPhotoLibraryUsageDescription</key>
-<string>Used to select existing photos for analysis</string>
-```
+> Stack: Swift 5.9 · SwiftUI · Combine · OpenAI GPT-4o Vision · Clean Architecture · SOLID
 
 ---
 
-## 🏗 Scalability Notes
-
-This codebase is built to grow. Key expansion points:
-
-- **New AI providers** → Implement `OpenAIDataSourceProtocol` with any LLM provider
-- **New analysis types** → Add entity fields; update `AnalysisMapper` and `PromptBuilder`
-- **Backend sync** → Replace `AnalysisLocalDataSource` with a hybrid remote/local implementation
-- **New features** → Add a `Features/NewFeature/` folder with its own ViewModel + View
-- **New screens** → Register new `make*ViewModel()` factory in `AppDIContainer`
-
----
-
-*Built to demonstrate Clean Architecture + SOLID principles + AI integration in Swift/SwiftUI.*
+*⭐️ Star this repo if you found the architecture useful!*

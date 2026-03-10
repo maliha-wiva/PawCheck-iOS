@@ -37,18 +37,18 @@ This project follows **Clean Architecture** with strict unidirectional dependenc
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                 Presentation Layer                   │
+│                 Presentation Layer                  │
 │         SwiftUI Views  +  ViewModels (MVVM)         │
 └────────────────────┬────────────────────────────────┘
                      │ depends on (protocols only)
 ┌────────────────────▼────────────────────────────────┐
-│                   Domain Layer                       │
+│                   Domain Layer                      │
 │     Entities  │  Use Cases  │  Repository Protocols │
 │         ⭐️ Pure Swift — zero framework imports ⭐️   │
 └────────────────────▲────────────────────────────────┘
                      │ implements
 ┌────────────────────┴────────────────────────────────┐
-│                    Data Layer                        │
+│                    Data Layer                       │
 │   OpenAI API  │  Local Storage  │  DTOs  │ Mappers  │
 └─────────────────────────────────────────────────────┘
 ```
